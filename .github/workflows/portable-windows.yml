@@ -1,0 +1,75 @@
+name: Portable Windows x64
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 240
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+          run_install: false
+
+      - name: Set up Python for native dependencies
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Configure unsigned user-mode package
+        shell: pwsh
+        run: |
+          @(
+            'DSH_DESKTOP_APP_ID=com.deepseek.harness',
+            'DSH_DESKTOP_AUTO_UPDATE_ENV=production',
+            'DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN=https://platform.deepseek.com'
+          ) | Set-Content -LiteralPath apps/desktop/.env.windows -Encoding utf8NoBOM
+
+      - name: Install source dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and smoke-test unpacked Windows app
+        run: pnpm run package:desktop:win:x64:dir -- --unsigned
+
+      - name: Create portable archive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $app = Join-Path $env:GITHUB_WORKSPACE 'apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/win-unpacked'
+          $executable = Join-Path $app 'DeepSeek Harness.exe'
+          if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+            throw 'The unpacked portable application executable was not produced.'
+          }
+          $archive = Join-Path $env:GITHUB_WORKSPACE 'DeepSeek-Harness-Portable-Windows-x64.zip'
+          if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
+          Compress-Archive -Path (Join-Path $app '*') -DestinationPath $archive -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksum = "$archive.sha256"
+          "$hash  $(Split-Path -Leaf $archive)" | Set-Content -LiteralPath $checksum -Encoding ascii
+          Write-Output "SHA256 $hash"
+          Write-Output "Checksum file $checksum"
+
+      - name: Upload portable ZIP and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeepSeek-Harness-Portable-Windows-x64
+          path: |
+            DeepSeek-Harness-Portable-Windows-x64.zip
+            DeepSeek-Harness-Portable-Windows-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
