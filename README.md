@@ -16,7 +16,7 @@ Review the [safety notice](SAFETY.md) before running the project.
 
 ## Windows portable build
 
-Download the latest [Windows x64 ZIP release](https://github.com/MichaelStetson/Portable-Deepseek-Harnesses/releases/latest), extract it to a folder writable by your Windows account, then launch `DeepSeek Harness.exe`. This unsigned, no-installer build does not require administrator access. Windows may show a SmartScreen warning because the executable is not code-signed.
+Download the latest [Windows x64 ZIP release](https://github.com/MichaelStetson/Portable-Deepseek-Harnesses/releases/latest), extract it to a folder writable by your Windows account, then launch `DeepSeek Harness.exe`. This unsigned, no-installer build does not require administrator access. Windows may show a SmartScreen warning because the executable is not code-signed. This fork packages the upstream source from [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness).
 
 This package is install-free, not self-contained: Harness data and credentials are stored under `%USERPROFILE%\.dsh`; Electron preferences and browser data are stored under `%APPDATA%`. Copy those folders separately if you need to move your data to another PC. Review [SAFETY.md](SAFETY.md) before running model-generated commands or plugins.
 

@@ -1,0 +1,54 @@
+name: Publish portable Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: GitHub Actions run ID that produced the Windows portable artifact
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built package
+        uses: actions/download-artifact@v4
+        with:
+          name: DeepSeek-Harness-Portable-Windows-x64
+          path: release-assets
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.build_run_id }}
+
+      - name: Verify package and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          sha256sum -c DeepSeek-Harness-Portable-Windows-x64.zip.sha256
+          unzip -Z1 DeepSeek-Harness-Portable-Windows-x64.zip | grep -Fxq 'DeepSeek Harness.exe'
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: portable-v0.2.1-alpha.1
+          target_commitish: ${{ github.sha }}
+          name: DeepSeek Harness 0.2.1-alpha.1 — Windows portable
+          prerelease: true
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/DeepSeek-Harness-Portable-Windows-x64.zip
+            release-assets/DeepSeek-Harness-Portable-Windows-x64.zip.sha256
+          body: |
+            No-installer Windows x64 ZIP built from DeepSeek Harness 0.2.1-alpha.1.
+
+            Extract the ZIP and launch `DeepSeek Harness.exe`; no installer or administrator elevation is required. The executable is unsigned, so Windows may show a SmartScreen warning.
+
+            This package is install-free, not self-contained: Harness data and credentials are stored under `%USERPROFILE%\.dsh`; Electron preferences and browser data are stored under `%APPDATA%`. Copy those folders separately when moving data to another PC.
+
+            Review the [safety notice](https://github.com/MichaelStetson/Portable-Deepseek-Harnesses/blob/master/SAFETY.md) before running model-generated commands or plugins. Upstream source: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness). License: [MIT](https://github.com/MichaelStetson/Portable-Deepseek-Harnesses/blob/master/LICENSE).
